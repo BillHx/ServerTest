@@ -1,0 +1,125 @@
+#ifndef THREAD_POOL_H
+#define THREAD_POOL_H
+
+#include <cstring>
+#include <list>
+#include <pthread.h>
+#include <semaphore.h>
+
+using namespace std;
+
+#define MAX_THREAD_CNT 10
+#define MAX_TASK_CNT 100
+#define DEF_THREAD_CNT 5
+
+
+// 信号量包装方法
+class Sem
+{
+public:
+    Sem()
+    {
+        if (sem_init(&m_sem, 0, 0) != 0)
+        {
+            // exception
+        }
+    }
+
+    ~Sem()
+    {
+        sem_destroy(&m_sem);
+    }
+
+    int wait()
+    {
+        return sem_wait(&m_sem) != 0;
+    }
+
+    int post()
+    {
+        return sem_post(&m_sem) != 0;
+    }
+
+private:
+    sem_t m_sem;
+};
+
+// 互斥锁方法包装
+class Lock
+{
+public:
+    Lock()
+    {
+        if (pthread_mutex_init(&m_mutex, NULL) != 0)
+        {
+            // exception
+        }
+    }
+
+    ~Lock()
+    {
+        pthread_mutex_destroy(&m_mutex);
+    }
+
+    int lock()
+    {
+        return pthread_mutex_lock(&m_mutex) != 0;
+    }
+
+    int unlock()
+    {
+        return pthread_mutex_unlock(&m_mutex) != 0;
+    }
+
+private:
+    pthread_mutex_t m_mutex;
+};
+
+// 任务类
+template<typename T>
+class Task
+{
+public:
+    Task(T func):func_job(func) {}
+
+    void run()
+    {
+        func_job();
+    }
+
+private:
+    T func_job;
+};
+
+// 线程池
+class ThreadPool
+{
+public:
+    ThreadPool(int thread_num = DEF_THREAD_CNT);
+    ~ThreadPool();
+
+
+    int addTask(Task task);
+
+    // 注意传入pthread_create的工作函数必须为static
+    // 可以额外传入一个this，来使用非静态的成员变量
+    static void* doTask(void *arg);
+    // 用于在doTask中调用，不用也可，但是在doTask中调用
+    // 成员变量和成员函数，都需要加self->
+    void work();
+
+
+
+
+private:
+    list<Task> m_task_queue;
+    int m_thread_num;
+    pthread_t m_threads[MAX_THREAD_CNT];
+    bool m_stop;
+    Lock m_lock;
+    Sem m_sem;
+
+};
+
+
+#endif
