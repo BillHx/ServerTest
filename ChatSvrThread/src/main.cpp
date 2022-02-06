@@ -7,8 +7,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+int conn_socks[MAX_CONN_CNT];
+int user_cnt = 0;
 bool stop_server = false;
-ThreadPool g_thread_pool;
+//ThreadPool<> g_thread_pool;
 
 int main(int argc, char *argv[])
 {
@@ -64,6 +66,15 @@ int main(int argc, char *argv[])
                 bzero(&addr_client, sizeof(addr_client));
                 int new_fd = accept(fd, &addr_client, &sz_client);
 
+                // 增加连接socket监听
+                conn_socks[user_cnt] = new_fd;
+                addfd(epoll_fd, new_fd);
+                ++user_cnt;
+            }
+            else 
+            {
+                // 连接socket的事件
+                
             }
         }
         

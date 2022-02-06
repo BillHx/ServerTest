@@ -1,6 +1,7 @@
 #include "../include/threadpool.h"
 
-ThreadPool::ThreadPool(int thread_num):m_stop(false), m_thread_num(thread_num)
+template<typename T>
+ThreadPool<T>::ThreadPool(int thread_num):m_stop(false), m_thread_num(thread_num)
 {
     for (int i = 0; i < m_thread_num; ++i) {
         if (pthread_create(&m_threads[i], NULL, doTask, this) != 0)
@@ -16,13 +17,15 @@ ThreadPool::ThreadPool(int thread_num):m_stop(false), m_thread_num(thread_num)
     }
 }
 
-ThreadPool::~ThreadPool()
+template<typename T>
+ThreadPool<T>::~ThreadPool()
 {
     memset(m_threads, 0, MAX_THREAD_CNT); 
     m_stop = true;
 }
 
-int ThreadPool::addTask(Task task)
+template<typename T>
+int ThreadPool<T>::addTask(Task<T> task)
 {
     m_lock.lock();
     if (m_task_queue.size() >= MAX_TASK_CNT)
@@ -36,7 +39,8 @@ int ThreadPool::addTask(Task task)
     return 0;
 }
 
-void* ThreadPool::doTask(void *arg)
+template<typename T>
+void* ThreadPool<T>::doTask(void *arg)
 {
     ThreadPool *self = (ThreadPool *)arg;
 
@@ -45,22 +49,26 @@ void* ThreadPool::doTask(void *arg)
     return arg;
 }
 
-void ThreadPool::work()
+template<typename T>
+void ThreadPool<T>::work()
 {
     // 若存在任务可读，则执行任务
-    m_sem.wait();
-    m_lock.lock();
-    if (m_task_queue.empty())
+    while (m_stop)
     {
+        m_sem.wait();
+        m_lock.lock();
+        if (m_task_queue.empty())
+        {
+            m_lock.unlock();
+            return;
+        }
+
+        Task<T> myTask = m_task_queue.front();
+        m_task_queue.pop_front();
         m_lock.unlock();
-        return;
+
+        myTask.run();
     }
-
-    Task myTask = m_task_queue.front();
-    m_task_queue.pop_front();
-    m_lock.unlock();
-
-    myTask.run();
 
     return ;
 }

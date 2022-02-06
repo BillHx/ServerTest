@@ -76,10 +76,11 @@ private:
 };
 
 // 任务类
+template<typename T>
 class Task
 {
 public:
-    Task(void (*func)()):func_job(func) {}
+    Task(T func):func_job(func) {}
 
     void run()
     {
@@ -87,11 +88,12 @@ public:
     }
 
 private:
-    void (*func_job)();
-
+    // 任务函数，直接用lambda为好
+    T func_job;
 };
 
 // 线程池
+template<typename T>
 class ThreadPool
 {
 public:
@@ -99,7 +101,7 @@ public:
     ~ThreadPool();
 
 
-    int addTask(Task task);
+    int addTask(Task<T> task);
 
     // 注意传入pthread_create的工作函数必须为static
     // 可以额外传入一个this，来使用非静态的成员变量
@@ -112,7 +114,7 @@ public:
 
 
 private:
-    list<Task> m_task_queue;
+    list<Task<T>> m_task_queue;
     int m_thread_num;
     pthread_t m_threads[MAX_THREAD_CNT];
     bool m_stop;
