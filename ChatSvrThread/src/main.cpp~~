@@ -1,19 +1,13 @@
 #include "../include/main.h"
 #include "../include/logtool.h"
-#include <csignal>
-#include <cstring>
-#include <sys/epoll.h>
-#include <sys/socket.h>
 #include <unistd.h>
 
 // 广播线程和主线程的通讯
 int pipe_broadcast[2];
 // 用户信息存储
 map<int, UserInfo> userInfos;
-// 信号处理管道
-int pipe_sig[2];
-// 主线程监听的管道fd和userInfos中的索引映射
-map<int, int> pipefd_2_userIndex;
+// 连接socket和userInfos中的索引映射
+map<int, int> sockfd_2_userIndex;
 int maxIndex = 0;
 int user_cnt = 0;
 
@@ -66,10 +60,6 @@ int main(int argc, char *argv[])
     int epoll_fd = epoll_create(MAX_EPOLL_CNT);
     addfd(epoll_fd, fd);
 
-    // 信号监听
-    pipe(pipe_sig);
-    addfd(epoll_fd, pipe_sig[0]);
-
     while (!stop_server) {
         epoll_event events[MAX_EPOLL_CNT];
         int ret_epoll = epoll_wait(epoll_fd, events, MAX_EPOLL_CNT, -1);
@@ -98,7 +88,7 @@ int main(int argc, char *argv[])
                 // 搜寻可用索引
                 int index = -1;
                 for (int j = 0; j <= maxIndex; ++j) {
-                    if (userInfos.find(j) == userInfos.end())
+                    if (userInfos[j].isInit())
                     {
                         index = j;
                         break;
@@ -109,11 +99,11 @@ int main(int argc, char *argv[])
                     index = ++maxIndex;
                 }
 
+                sockfd_2_userIndex[new_fd] = index;
                 userInfos[index].reset();
                 socketpair(AF_UNIX, SOCK_STREAM, 0, userInfos[index].pipe);
                 userInfos[index].socket = new_fd;
                 addfd(epoll_fd, userInfos[index].pipe[0]);
-                pipefd_2_userIndex[userInfos[index].pipe[0]] = index;
                 ++user_cnt;
 
                 auto func = [new_fd, index]{
@@ -123,31 +113,11 @@ int main(int argc, char *argv[])
                 Task<lambdaType> task(func);
                 g_thread_pool.addTask(task);
             }
-            else if (event_fd == pipe_sig[0] && events[i].events & EPOLLIN) 
-            {
-                char buff[BUFF_SIZE];
-                memset(buff, '\0', BUFF_SIZE);
-                int ret_byte = read(pipe_sig[0], buff, BUFF_SIZE);
-
-                for (int j = 0; j < ret_byte; ++j) {
-                    switch (buff[j]) 
-                    {
-                        case SIGTERM:
-                        {
-                            stop_server = true;
-                            break;
-                        }
-                        default:
-                            break;
-                    }
-                }
-                
-            }
-            else
+            else 
             {
                 // 广播消息
-                map<int, int>::iterator iter = pipefd_2_userIndex.find(event_fd);
-                if (iter != pipefd_2_userIndex.end())
+                map<int, int>::iterator iter = sockfd_2_userIndex.find(event_fd);
+                if (iter != sockfd_2_userIndex.end())
                 {
                     if (event_fd == userInfos[iter->second].pipe[0] && events[i].events & EPOLLIN)
                     {
@@ -168,10 +138,6 @@ int main(int argc, char *argv[])
 
     close(fd);
     close(epoll_fd);
-    close(pipe_broadcast[1]);
-    close(pipe_broadcast[0]);
-    close(pipe_sig[0]);
-    close(pipe_sig[1]);
 
     return 0;
 }
@@ -182,7 +148,7 @@ void doBroadCast(int read_fd)
     int epoll_fd = epoll_create(MAX_EPOLL_CNT);
     addfd(epoll_fd, read_fd);
 
-    while (!stop_server) {
+    while (1) {
         int num = epoll_wait(epoll_fd, events, MAX_EPOLL_CNT, -1);
 
         if (num <= 0)
@@ -202,7 +168,7 @@ void doBroadCast(int read_fd)
                 memset(buff, '\0', BUFF_SIZE);
                 int ret_byte = read(read_fd, buff, BUFF_SIZE);
 
-                for (auto &elem : pipefd_2_userIndex) 
+                for (auto &elem : sockfd_2_userIndex) 
                 {
                     UserInfo &info = userInfos[elem.second];
                     // tee(read_fd, info.pipe[0], , unsigned int __flags);
@@ -225,8 +191,7 @@ void doChildThread(int fd, int pipe_fd[])
     addfd(epoll_fd, fd);
     addfd(epoll_fd, pipe_fd[1]);
 
-    bool stop_thread = false;
-    while (!stop_thread) {
+    while (1) {
         int num = epoll_wait(epoll_fd, events, MAX_EPOLL_CNT, -1);
 
         if (num <= 0)
@@ -245,13 +210,6 @@ void doChildThread(int fd, int pipe_fd[])
                 memset(buff, '\0', BUFF_SIZE);
                 int ret_byte = recv(fd, buff, BUFF_SIZE, 0);
 
-                if (ret_byte == 0)
-                {
-                    // 断开连接
-                    stop_thread = true;
-                    break;
-                }
-
                 send(pipe_fd[1], buff, ret_byte, 0);
             }
             else if (events[i].data.fd == pipe_fd[1] && events[i].events & EPOLLIN)
@@ -267,25 +225,6 @@ void doChildThread(int fd, int pipe_fd[])
     }
 
     close(epoll_fd);
-    close(pipe_fd[0]);
-    close(pipe_fd[1]);
-
-    // 清空数据
-    int key1 = -1;
-    int key2 = -1;
-    for (auto &elem : userInfos) {
-        if (elem.second.socket == fd)
-        {
-            key1 = elem.second.pipe[0];
-            key2 = elem.first;
-        }
-    }
-
-    if (key1 != -1)
-    {
-        pipefd_2_userIndex.erase(key1);
-        userInfos.erase(key2);
-    }
 }
 
 int addfd(int epoll_fd, int fd)
@@ -303,25 +242,6 @@ int delfd(int epoll_fd, int fd)
     event.data.fd = fd;
     event.events = EPOLLIN;
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, &event);
-    return 0;
-}
-
-void sig_handler(int sig)
-{
-    // 按字节发送
-    int msg = sig;
-    write(pipe_sig[1], (char *)&msg, 1);
-    return ;
-}
-
-int addsig(int sig)
-{
-    struct sigaction sa;
-    memset(&sa, '\0', sizeof(sa));
-    sa.sa_handler = sig_handler;
-    sa.sa_flags |= SA_RESTART;
-    sigfillset(&sa.sa_mask);
-    sigaction(sig, &sa, NULL);
     return 0;
 }
 

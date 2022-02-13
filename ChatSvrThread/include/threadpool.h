@@ -123,5 +123,7 @@ private:
 
 };
 
+#define THREAD_POOL_CPP
+#include "../src/threadpool.cpp"
 
 #endif

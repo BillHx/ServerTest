@@ -1,0 +1,3 @@
+/root/ServerTest/ChatSvrThread/build/CMakeFiles/rebuild_cache.dir
+/root/ServerTest/ChatSvrThread/build/CMakeFiles/ChatSvrThread.dir
+/root/ServerTest/ChatSvrThread/build/CMakeFiles/edit_cache.dir

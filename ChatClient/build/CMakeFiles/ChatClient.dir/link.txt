@@ -1,0 +1,1 @@
+/usr/bin/c++ -rdynamic CMakeFiles/ChatClient.dir/root/ServerTest/ChatClient/src/main.cpp.o -o ChatClient 

@@ -10,7 +10,7 @@ using namespace std;
 
 #define MAX_THREAD_CNT 10
 #define MAX_TASK_CNT 100
-#define DEF_THREAD_CNT 5
+#define DEF_THREAD_CNT 2
 
 
 // 信号量包装方法
@@ -123,5 +123,7 @@ private:
 
 };
 
+#define THREAD_POOL_CPP
+#include "../src/threadpool.cpp"
 
 #endif

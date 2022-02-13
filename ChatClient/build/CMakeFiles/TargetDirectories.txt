@@ -1,0 +1,3 @@
+/root/ServerTest/ChatClient/build/CMakeFiles/rebuild_cache.dir
+/root/ServerTest/ChatClient/build/CMakeFiles/ChatClient.dir
+/root/ServerTest/ChatClient/build/CMakeFiles/edit_cache.dir

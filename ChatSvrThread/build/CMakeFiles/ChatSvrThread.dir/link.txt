@@ -1,0 +1,1 @@
+/usr/bin/c++ -g -rdynamic CMakeFiles/ChatSvrThread.dir/root/ServerTest/ChatSvrThread/src/logtool.cpp.o CMakeFiles/ChatSvrThread.dir/root/ServerTest/ChatSvrThread/src/main.cpp.o CMakeFiles/ChatSvrThread.dir/root/ServerTest/ChatSvrThread/src/threadpool.cpp.o -o ChatSvrThread  -lpthread 

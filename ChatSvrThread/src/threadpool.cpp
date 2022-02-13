@@ -1,4 +1,8 @@
-#include "../include/threadpool.h"
+// #ifndef THREAD_POOL_CPP
+// #define THREAD_POOL_CPP
+// #include "../include/threadpool.h"
+#ifdef THREAD_POOL_CPP
+#include "../include/logtool.h"
 
 template<typename T>
 ThreadPool<T>::ThreadPool(int thread_num):m_stop(false), m_thread_num(thread_num)
@@ -35,7 +39,7 @@ int ThreadPool<T>::addTask(Task<T> task)
     m_task_queue.push_back(task);
     m_lock.unlock();
 
-    m_sem.post();
+    int res = m_sem.post();
     return 0;
 }
 
@@ -53,7 +57,7 @@ template<typename T>
 void ThreadPool<T>::work()
 {
     // 若存在任务可读，则执行任务
-    while (m_stop)
+    while (!m_stop)
     {
         m_sem.wait();
         m_lock.lock();
@@ -73,3 +77,4 @@ void ThreadPool<T>::work()
     return ;
 }
 
+#endif

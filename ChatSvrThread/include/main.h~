@@ -15,6 +15,7 @@
 #include <sys/epoll.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "threadpool.h"
 
@@ -54,13 +55,13 @@ struct UserInfo
 int addfd(int epoll_fd, int fd);
 int delfd(int epoll_fd, int fd);
 
+void sig_handler(int sig);
+int addsig(int sig);
+
 int doRead(int fd);
 int doSendAll(int read_fd);
 
 void doBroadCast(int read_fd);
-void doChildThread(int fd);
-
-void LOGD(const string str);
-void LOGE(const string str);
+void doChildThread(int fd, int pipe_fd[]);
 
 #endif
