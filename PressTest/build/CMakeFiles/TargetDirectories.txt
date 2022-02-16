@@ -1,0 +1,3 @@
+/root/ServerTest/PressTest/build/CMakeFiles/rebuild_cache.dir
+/root/ServerTest/PressTest/build/CMakeFiles/PressTest.dir
+/root/ServerTest/PressTest/build/CMakeFiles/edit_cache.dir

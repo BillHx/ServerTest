@@ -1,0 +1,168 @@
+#include "../include/main.h"
+#include <arpa/inet.h>
+#include <cstring>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <ostream>
+#include <pthread.h>
+#include <strings.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+ThreadPool<lambdaType> g_threadpool;
+map<int, int> g_cnt;
+
+int main(int argn, char *argv[])
+{
+    if (argn < 2)
+    {
+        LOGE("error argn!!!");
+        return 0;
+    }
+
+    char *ip = argv[1];
+    int port = atoi(argv[2]);
+
+    sockaddr_in addr;
+    bzero(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    inet_pton(AF_INET, ip, &(addr.sin_addr));
+    cout << addr.sin_family << endl;
+
+    int test = 2;
+    // int a = 1;
+    while (test--)
+    {
+        int b = 100;
+        // int d;
+        // char c[10];
+        // cout << b << endl;
+        cout << &b << "\t";
+        flush(cout);
+
+        b = 200;
+        // cout << b << endl;
+        cout << &b << endl;
+        // // 间隔一段时间就创建一个连接
+        // auto func = [&addr]{
+        //     cout << addr.sin_family << endl;
+        //     doNewConnect(addr);
+        // };
+
+        // Task<lambdaType> task(func);
+        // g_threadpool.addTask(task);
+        // 
+        // // LOGD("sleep ...");
+        // // sleep(CONNECT_INTERVAL);
+        // if (test == 8)
+        // {
+        //     char holder[10];
+        //     memset(holder, '\0', 10);
+        // }
+        // char log[30];
+        // cout << "log str = " << log << endl;
+        // char strTest[10];
+        // itoa(strTest, test);
+        // strcat(log, strTest);
+        // strcat(log, " start test");
+
+        // cout << "i find it!" << endl;
+
+        // if (test == 1)
+        // {
+        //     while (1) {
+        //     }
+        // }
+    }
+
+    // sleep(1000);
+    cout << "main thread done" << endl;
+
+    return 0;
+}
+
+void doNewConnect(sockaddr_in addr)
+{
+    // int fd = socket(PF_INET, SOCK_STREAM, 0);
+    // int res = connect(fd, (struct sockaddr *)(&addr), sizeof(addr));
+    // if (res < 0)
+    // {
+    //     cout << strerror(errno) << endl;
+    //     LOGE("connect error");
+    //     return ;
+    // }
+
+    // LOGD("connect success, start to chat");
+    // g_cnt[fd] = CHAT_CNT;
+
+    // // 聊天线程启动
+    // auto func = [&fd]{
+    //     doChatLogic(fd);
+    // };
+    // 
+    // Task<lambdaType> task(func);
+    // g_threadpool.addTask(task);
+
+    // // socket监听
+    // int epoll_fd = epoll_create(MAX_EPOLL_CNT);
+    // addEpollFD(epoll_fd, fd, false);
+
+    // epoll_event events[MAX_EPOLL_CNT];
+    // int pipe_output[2];
+    // pipe(pipe_output);
+
+    // int cnt = REST_RECV_CNT;
+    // while (cnt > 0) 
+    // {
+    //     int num = epoll_wait(epoll_fd, events, MAX_EPOLL_CNT, -1);
+    //     if (num < 0)
+    //     {
+    //         LOGE("epoll wait error");
+    //         // return ;
+    //     }
+    //     
+    //     for (int i = 0; i < num; ++i) {
+    //         if (events[i].data.fd == fd && events[i].events & EPOLLIN)
+    //         {
+    //             char log[30];
+    //             char strID[20];
+    //             itoa(strID, pthread_self());
+    //             strcat(log, strID);
+    //             strcat(log, "recv msg");
+    //             
+    //             LOGD(log);
+    //             splice(fd, NULL, pipe_output[1], NULL, BUFF_SIZE, SPLICE_F_MORE);
+    //             splice(pipe_output[0], NULL, 1, NULL, BUFF_SIZE, SPLICE_F_MORE);
+    //             --cnt;
+    //         }
+    //     }
+    // }
+
+    // close(fd);
+    // close(pipe_output[0]);
+    // close(pipe_output[1]);
+}
+
+void doChatLogic(int fd)
+{
+    while(g_cnt[fd]--)
+    {
+        char buff[BUFF_SIZE];
+        memset(buff, '\0', BUFF_SIZE);
+        char strID[20] = "";
+        itoa(strID, pthread_self());
+        char strContent[] = "chat hahahaha ";
+        char strCnt[10] = "";
+        itoa(strCnt, g_cnt[fd]);
+
+        strcat(buff, strID);
+        strcat(buff, strContent);
+        strcat(buff, strCnt);
+
+        LOGD(buff);
+        int res = send(fd, buff, BUFF_SIZE, 0);
+    }
+}
+
